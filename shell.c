@@ -31,7 +31,16 @@ int main(void)
         if (fgets(input, sizeof(input), stdin) == NULL)
             break;
 
-        /* fgets 会把回车也读进来，这里把末尾的 \n 换成字符串结束符 \0 */
+        /* fgets 会把回车也读进来，这里把末尾的 \n 换成字符串结束符 \0。
+         * 如果 fgets 没读到 \n，说明输入超过79字符，剩下的还在缓冲里，
+         * 得读掉扔掉，不然下一轮会被当成新命令，整个就乱了 */
+        if (strchr(input, '\n') == NULL) {
+            int ch;
+            while ((ch = getchar()) != '\n' && ch != EOF)
+                ;
+            printf("osh: command too long (max %d characters)\n", MAX_LINE - 1);
+            continue;
+        }
         input[strcspn(input, "\n")] = '\0';
 
         /* 只敲了回车，不记历史也不执行 */
@@ -93,14 +102,21 @@ int main(void)
             continue;
         }
 
-        /* 最后一个词是 & 就算后台命令：把 & 摘掉，父进程待会不等待 */
+        /* 判断是不是后台命令：最后一个词是 & 或最后一个词以 & 结尾
+         * （ls & 跟 ls& 两种写法都认） */
         int background = 0;
         if (strcmp(args[argc - 1], "&") == 0) {
             background = 1;
             args[--argc] = NULL;
-            if (argc == 0)              /* 整条命令只有一个 &，没东西可跑 */
-                continue;
+        } else {
+            size_t len = strlen(args[argc - 1]);
+            if (len > 1 && args[argc - 1][len - 1] == '&') {
+                background = 1;
+                args[argc - 1][len - 1] = '\0';
+            }
         }
+        if (argc == 0)                  /* 整条命令只有一个 &，没东西可跑 */
+            continue;
 
         pid_t pid = fork();
         if (pid < 0) {
