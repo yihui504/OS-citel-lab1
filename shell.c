@@ -14,6 +14,10 @@ int main(void)
     int should_run = 1;
 
     while (should_run) {
+        /* 顺手打扫：把已经跑完的后台子进程都回收掉，不留僵尸 */
+        while (waitpid(-1, NULL, WNOHANG) > 0)
+            ;
+
         printf("osh>");
         fflush(stdout);
 
@@ -70,8 +74,8 @@ int main(void)
                 /* 父进程不等，报一下孩子的 pid 就继续 */
                 printf("[后台] pid=%d\n", pid);
             } else {
-                /* 前台：站在原地等孩子干完活 */
-                wait(NULL);
+                /* 前台：点名等自家这个孩子，别把后台的死孩子错收走 */
+                waitpid(pid, NULL, 0);
             }
         }
     }
