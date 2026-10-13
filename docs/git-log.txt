@@ -1,0 +1,127 @@
+﻿commit 7f657a9a776e15aa7045fdd0ddf8f61949e70e53
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 20:03
+
+    add: Makefile和完整版readme
+    
+    新增Makefile后输入make就能编译，-Wall -Wextra -O2，clean负责删osh。又发现make是按文件修改时间偷懒的：手动gcc编出来的osh比
+    shell.c新，但它说up to date不干活，make clean之后再make
+    ，看到gcc那行真跑了，零警告。
+    readme补齐设计说明、编译使用方法，AI分工按课程要求写明
+    各自做了什么，证据指向docs/和git log。
+
+ Makefile  |  7 ++++++
+ README.md | 75 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 80 insertions(+), 2 deletions(-)
+
+commit c5b6e49ecd46c10c8fb39fd8d823b282340fa686
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 17:58
+
+    fix: 补边界情况处理
+    
+    超长命令：fgets只装79字符，剩下的还在缓冲里，不读掉的话下一轮会被当成新命令。现在整行丢弃并提示。
+    ls&这种&紧贴的写法也支持了，之前仅支持ls &。
+    空行和纯空格的行不入history。
+
+ shell.c | 24 ++++++++++++++++++++----
+ 1 file changed, 20 insertions(+), 4 deletions(-)
+
+commit 25c8b79b3bd09aefa3ea1e4612889bcf39c873ca
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 17:49
+
+    fix: 命令超过10条后history编号错乱
+    
+    敲满12条指令后，编号还打1~10，而其实该是3~12，
+    !1这种被顶掉的老编号不报错，把c11重新运行了。
+    与AI讨论分析的结论：打印和!N都默认"格子i-1住着第i条命令"，转一圈覆盖后不成立。
+    改成先算窗口下限oldest（超10是count-9，否则1），
+    history从count打到oldest，格子取(i-1)%10；!N只认窗口内的编号。
+    复测：history显示12~3，!1报错，!3和!12都对。
+
+ shell.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+commit e8e457e69224d4e0ebc98b841ee0b0e04249d05d
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 17:29
+
+    part2: !!和!N，用于重跑历史里的命令
+    
+    !!跑上一条，!N跑编号N那条。替换成真命令再走老流程，
+    回显、记历史都不用另写。空历史报No commands in history.
+    编号查不到报No such command in history.
+    连敲两次!!历史里就有两条一样的。
+
+ shell.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+commit 3558023e2440160df38d09ac1ee094aaa13423c5
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 16:43
+
+    part2: history命令
+    
+    数组开10个格子，下标用count%10，写满了就顶掉最旧的。
+    history从新到旧打出来，它自己不算一条。
+    踩的坑：strtok会把空格改成\0，得先把命令strcpy进历史
+    再切词，不然ls -l存进去就剩个ls。
+
+ shell.c | 23 ++++++++++++++++++++++-
+ 1 file changed, 22 insertions(+), 1 deletion(-)
+
+commit f2a021696512f0f0d87512fb1a6eb028e705e2ca
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 15:17
+
+    fix: 处理后台子进程的僵尸问题
+    
+    上一版跑后台命令后ps里能看到<defunct>，经与agent讨论得出结论如下：
+    wait(NULL)是随便等一个，会把先死的后台child错收走，刚跑完的前台命令反而没人管。
+    改成：前台waitpid(pid)点名等自家孩子，每轮循环开头再用waitpid(-1, WNOHANG)把跑完的后台孩子顺手扫掉，重测同一套操作，ps里就没有<defunct>了。
+
+ shell.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+commit 17fc0b8d59b0c83b0ef7c5d5ad49098ccbea630c
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 15:08
+
+    part1: 支持后台运行，命令末尾加&父进程就不等待
+    
+    最后一个参数是&就摘掉它，fork之后父进程直接回提示符，
+    前台命令还是老老实实wait。
+    测试时埋了个雷：后台子进程结束后没人收尸，ps里能看到僵尸，
+    下一步处理。
+
+ shell.c | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+commit 98f98b28ee451b14a24ff1dca05f31f706cdfad7
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 15:01
+
+    part1: 子进程执行命令，前台版
+    
+    fork出子进程跑execvp，父进程wait等它结束。
+    strtok按空格切参数，exit退出。命令打错shell不会崩，
+    子进程报完错自己退了。
+    后台&还不支持，下一步加。
+
+ shell.c | 63 ++++++++++++++++++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 54 insertions(+), 9 deletions(-)
+
+commit 0ffc0b224a7cd548b959ec1fe7febe6e16f276fb
+Author: 黄译辉 <1142830868@qq.com>
+Date:   2026-10-13 14:48
+
+    init: 实验模板代码和readme占位
+    
+    shell.c 是 Lab01.pdf 里给的骨架 main()，原样搬过来的。
+    readme 先占个位。顺手加了 .gitignore，免得把编译出来的 osh 传上去。
+
+ .gitignore |  3 +++
+ README.md  |  8 ++++++++
+ shell.c    | 20 ++++++++++++++++++++
+ 3 files changed, 31 insertions(+)
