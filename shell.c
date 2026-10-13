@@ -6,6 +6,11 @@
 #include <sys/wait.h>
 
 #define MAX_LINE 80 /* 命令最大长度 */
+#define HISTORY_NUM 10 /* 最多记住10条命令 */
+
+/* 历史记录：10个格子，每个格子放一条命令字符串 */
+char history[HISTORY_NUM][MAX_LINE];
+int history_count = 0; /* 开天辟地以来一共记了几条 */
 
 int main(void)
 {
@@ -28,6 +33,22 @@ int main(void)
         /* fgets 会把回车也读进来，这里把末尾的 \n 换成字符串结束符 \0 */
         input[strcspn(input, "\n")] = '\0';
 
+        /* 只敲了回车，不记历史也不执行 */
+        if (input[0] == '\0')
+            continue;
+
+        /* history 是内置命令：从新到旧列出历史，它自己不占编号 */
+        if (strcmp(input, "history") == 0) {
+            int n = history_count < HISTORY_NUM ? history_count : HISTORY_NUM;
+            for (int i = n; i >= 1; i--)
+                printf("%d %s\n", i, history[i - 1]);
+            continue;
+        }
+
+        /* 记入历史：第 count 条命令放进 count%10 号格子，转一圈覆盖最旧的 */
+        strcpy(history[history_count % HISTORY_NUM], input);
+        history_count++;
+
         /* 把命令按空格切成一个个词，存进 args[] */
         int argc = 0;
         char *token = strtok(input, " \t");
@@ -37,7 +58,7 @@ int main(void)
         }
         args[argc] = NULL;
 
-        /* 只敲了回车，什么也不做，重新提示 */
+        /* 整行全是空格的情况，同理跳过 */
         if (argc == 0)
             continue;
 
