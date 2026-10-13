@@ -47,9 +47,12 @@ int main(void)
             strcpy(input, history[(history_count - 1) % HISTORY_NUM]);
             printf("%s\n", input);
         } else if (input[0] == '!' && isdigit((unsigned char)input[1])) {
-            /* !N 是重跑编号N的那条 */
+            /* !N 是重跑编号N的那条；N得还在最近10条的窗口里，
+             * 早被顶掉的老编号要报错，不能乱拿格子里的东西充数 */
             int n = atoi(input + 1);
-            if (n >= 1 && n <= history_count) {
+            int oldest = history_count > HISTORY_NUM
+                             ? history_count - HISTORY_NUM + 1 : 1;
+            if (n >= oldest && n <= history_count) {
                 strcpy(input, history[(n - 1) % HISTORY_NUM]);
                 printf("%s\n", input);
             } else {
@@ -58,11 +61,13 @@ int main(void)
             }
         }
 
-        /* history 是内置命令：从新到旧列出历史，它自己不占编号 */
+        /* history 是内置命令：从新到旧列出历史，它自己不占编号
+         * 编号要接着往上涨（12条就是3~12），不能老打印1~10 */
         if (strcmp(input, "history") == 0) {
-            int n = history_count < HISTORY_NUM ? history_count : HISTORY_NUM;
-            for (int i = n; i >= 1; i--)
-                printf("%d %s\n", i, history[i - 1]);
+            int oldest = history_count > HISTORY_NUM
+                             ? history_count - HISTORY_NUM + 1 : 1;
+            for (int i = history_count; i >= oldest; i--)
+                printf("%d %s\n", i, history[(i - 1) % HISTORY_NUM]);
             continue;
         }
 
