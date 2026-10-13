@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -36,6 +37,26 @@ int main(void)
         /* 只敲了回车，不记历史也不执行 */
         if (input[0] == '\0')
             continue;
+
+        /* !! 是重跑上一条；先换成真命令再回显，后面照常记历史、执行 */
+        if (strcmp(input, "!!") == 0) {
+            if (history_count == 0) {
+                printf("No commands in history.\n");
+                continue;
+            }
+            strcpy(input, history[(history_count - 1) % HISTORY_NUM]);
+            printf("%s\n", input);
+        } else if (input[0] == '!' && isdigit((unsigned char)input[1])) {
+            /* !N 是重跑编号N的那条 */
+            int n = atoi(input + 1);
+            if (n >= 1 && n <= history_count) {
+                strcpy(input, history[(n - 1) % HISTORY_NUM]);
+                printf("%s\n", input);
+            } else {
+                printf("No such command in history.\n");
+                continue;
+            }
+        }
 
         /* history 是内置命令：从新到旧列出历史，它自己不占编号 */
         if (strcmp(input, "history") == 0) {
