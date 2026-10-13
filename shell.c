@@ -42,6 +42,15 @@ int main(void)
             continue;
         }
 
+        /* 最后一个词是 & 就算后台命令：把 & 摘掉，父进程待会不等待 */
+        int background = 0;
+        if (strcmp(args[argc - 1], "&") == 0) {
+            background = 1;
+            args[--argc] = NULL;
+            if (argc == 0)              /* 整条命令只有一个 &，没东西可跑 */
+                continue;
+        }
+
         pid_t pid = fork();
         if (pid < 0) {
             perror("osh: fork");
@@ -57,8 +66,13 @@ int main(void)
             perror(args[0]);
             exit(1);
         } else {
-            /* 父进程：站在原地等孩子干完活 */
-            wait(NULL);
+            if (background) {
+                /* 父进程不等，报一下孩子的 pid 就继续 */
+                printf("[后台] pid=%d\n", pid);
+            } else {
+                /* 前台：站在原地等孩子干完活 */
+                wait(NULL);
+            }
         }
     }
     return 0;
